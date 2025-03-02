@@ -1,5 +1,6 @@
 import requests
 import os
+from datetime import datetime
 
 def get_repo_stats(owner, repo, token):
     url = f"https://api.github.com/repos/{owner}/{repo}"
@@ -11,27 +12,55 @@ def get_repo_stats(owner, repo, token):
         stars = data.get("stargazers_count", 0)
         forks = data.get("forks_count", 0)
         open_issues = data.get("open_issues_count", 0)
-        return stars, forks, open_issues
+        watchers = data.get("subscribers_count", 0)
+        last_updated = data.get("pushed_at", "N/A")
+        if last_updated != "N/A":
+            last_updated = datetime.strptime(last_updated, "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d %H:%M UTC")
+        return stars, forks, open_issues, watchers, last_updated
+    elif response.status_code == 404:
+        return "Not found"
+    elif response.status_code == 403:
+        return "Rate limit exceeded"
     else:
-        print(f"Error: {response.status_code}")
-        return None
+        return f"Error: {response.status_code}"
+def process_repos(repo_input, token):
+    repos = [r.strip() for r in repo_input.split(",")]
+    results = []
+    
+    for repo_str in repos:
+        try:
+            owner, repo = repo_str.split("/")
+            stats = get_repo_stats(owner, repo, token)
+            results.append((f"{owner}/{repo}", stats))
+        except ValueError:
+            results.append((repo_str, "Invalid format - use owner/repo"))
+    
+    return results
 
 if __name__ == "__main__":
-    owner = input("Enter the repository owner: ")
-    repo = input("Enter the repository name: ")
-    
+    print("Enter repositories (e.g., torvalds/linux)")
+    repo_input = input("> ")
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
         # token = "your_personal_access_token"  # Replace this for personal use
         print("No GITHUB_TOKEN found in environment. Falling back >>")
         token = input("Enter your GitHub token: ")
     
-    stats = get_repo_stats(owner, repo, token)
-    if stats:
-        stars, forks, open_issues = stats
-        print(f"\nRepository: {owner}/{repo}")
-        print(f"Stars: {stars}")
-        print(f"Forks: {forks}")
-        print(f"Open Issues: {open_issues}")
+    if not repo_input:
+        print("No repositories entered.")
     else:
-        print("Failed to fetch repository stats.")
+        results = process_repos(repo_input, token)
+        print("\nRepository Stats:")
+        print("-" * 50)
+        for repo, stats in results:
+            if isinstance(stats, tuple):
+                stars, forks, open_issues, watchers, last_updated = stats
+                print(f"{repo}:")
+                print(f"  Stars: {stars}")
+                print(f"  Forks: {forks}")
+                print(f"  Open Issues: {open_issues}")
+                print(f"  Watchers: {watchers}")
+                print(f"  Last Updated: {last_updated}")
+            else:
+                print(f"{repo}: {stats}")
+            print("-" * 50)
