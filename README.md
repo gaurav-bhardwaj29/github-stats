@@ -1,5 +1,5 @@
 # GitHub Repo Stats Dashboard
-A simple Python script to fetch and display repository stats (stars, forks, open issues) using the GitHub API.
+A simple Python script to fetch and display repository stats (stars, forks, open issues, subscriber count, last created) using the GitHub API.
 
 ## How to Use
 1. Install Python and the `requests` library (`pip install requests`).
