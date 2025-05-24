@@ -14,18 +14,17 @@ def main():
     repo = input("Repository name: ").strip()
     token = get_token()
 
-    print("\nFetching enhanced repository insights...\n")
+    print("\nFetching repository stats and insights...\n")
     try:
         basic_stats = get_repo_stats(owner, repo, token)
-        
         pr_count = get_pr_stats(owner, repo, token)
         contributors = get_contributors(owner, repo, token)
         commit_activity = get_commit_activity(owner, repo, token)
     except Exception as e:
         print(f"Error fetching data: {e}")
         return
-    basic_stats = get_repo_stats(owner, repo, token)
-    print("\nRepository Stats:")
+
+    print("Basic Repository Stats:")
     for k, v in basic_stats.items():
         print(f"  {k.replace('_', ' ').title()}: {v}")
     print(f"PRs (all): {pr_count}")
@@ -52,12 +51,13 @@ def main():
                 print("Invalid format.")
                 continue
             export_data({
+                "basic_stats": basic_stats,
                 "pr_count": pr_count,
                 "contributors": contributors,
                 "commit_activity": commit_activity
             }, f"{repo}_all_data.{export_format}", export_format)
         elif choice == "4":
-            print("Goodbye!")
+            print("You are Welcome :)")
             break
         else:
             print("Invalid option. Please select 1, 2, 3, or 4.")
