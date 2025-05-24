@@ -1,6 +1,6 @@
 import requests
-from datetime import datetime, timedelta
 from utils import handle_github_error
+import time
 
 def get_repo_stats(owner, repo, token):
     url = f"https://api.github.com/repos/{owner}/{repo}"
@@ -22,14 +22,23 @@ def get_repo_stats(owner, repo, token):
         }
     else:
         handle_github_error(response)
-        
+
 def get_pr_stats(owner, repo, token):
     url = f"https://api.github.com/repos/{owner}/{repo}/pulls?state=all&per_page=1"
     headers = {"Authorization": f"Bearer {token}"}
     resp = requests.get(url, headers=headers)
     if resp.status_code != 200:
         handle_github_error(resp)
-    total_prs = int(resp.headers.get("Link", "").split("page=")[-1].split(">")[0]) if "Link" in resp.headers else len(resp.json())
+    if "Link" in resp.headers:
+        link = resp.headers["Link"]
+        import re
+        match = re.search(r'&page=(\d+)>; rel="last"', link)
+        if match:
+            total_prs = int(match.group(1))
+        else:
+            total_prs = len(resp.json())
+    else:
+        total_prs = len(resp.json())
     return total_prs
 
 def get_contributors(owner, repo, token):
@@ -48,22 +57,34 @@ def get_contributors(owner, repo, token):
         page += 1
     return [{"login": c["login"], "contributions": c["contributions"]} for c in contributors]
 
-def get_commit_activity(owner, repo, token):
+def get_commit_activity(owner, repo, token, retries=5, wait=2):
     url = f"https://api.github.com/repos/{owner}/{repo}/stats/commit_activity"
     headers = {"Authorization": f"Bearer {token}"}
-    resp = requests.get(url, headers=headers)
-    if resp.status_code != 200:
-        handle_github_error(resp)
-    weekly_data = resp.json()
-    if not isinstance(weekly_data, list):
-        return []
-    return weekly_data
+    for _ in range(retries):
+        resp = requests.get(url, headers=headers)
+        if resp.status_code == 202:
+            print("GitHub is generating commit activity data, waiting a few seconds...")
+            time.sleep(wait)
+            continue
+        elif resp.status_code != 200:
+            handle_github_error(resp)
+        weekly_data = resp.json()
+        if not isinstance(weekly_data, list):
+            print("Unexpected data format from GitHub API.")
+            return []
+        return weekly_data
+    print("GitHub did not return commit activity data in time. Please try again later.")
+    return []
 
 if __name__ == "__main__":
     import os
     owner = input("Repository owner: ")
     repo = input("Repository name: ")
     token = os.environ.get("GITHUB_TOKEN") or input("GitHub Token: ")
+    basic_stats = get_repo_stats(owner, repo, token)
+    print("Basic repository stats:")
+    for k, v in basic_stats.items():
+        print(f"  {k}: {v}")
     print(f"Total PRs: {get_pr_stats(owner, repo, token)}")
     contributors = get_contributors(owner, repo, token)
     print(f"Total contributors: {len(contributors)}")
