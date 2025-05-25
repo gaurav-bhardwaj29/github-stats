@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>GitHub Repo Live Stats Dashboard</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .stats { margin-bottom: 1.5rem; }
+        .contributors { max-height: 240px; overflow-y: auto; }
+        .dl-btn { margin-left: 0.5rem; }
+        .chart-img { max-width: 100%; height: auto; }
+    </style>
+</head>
+<body>
+<div class="container my-5">
+    <h1 class="mb-4">GitHub Repo Live Stats Dashboard</h1>
+    <form method="post" class="row g-3 align-items-center mb-4">
+        <div class="col-auto">
+            <label for="owner" class="col-form-label">Owner:</label>
+        </div>
+        <div class="col-auto">
+            <input type="text" id="owner" name="owner" value="{{ owner }}" required class="form-control">
+        </div>
+        <div class="col-auto">
+            <label for="repo" class="col-form-label">Repo:</label>
+        </div>
+        <div class="col-auto">
+            <input type="text" id="repo" name="repo" value="{{ repo }}" required class="form-control">
+        </div>
+        <div class="col-auto">
+            <label for="pat" class="col-form-label">GitHub PAT (optional):</label>
+        </div>
+        <div class="col-auto">
+            <input type="password" id="pat" name="pat" value="{{ pat }}" class="form-control">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Get Stats</button>
+        </div>
+        {% if pat %}
+        <div class="col-auto">
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">Logout PAT</a>
+        </div>
+        {% endif %}
+    </form>
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    {% if stats %}
+        <div class="stats">
+            <h3>
+                Basic Stats
+                <a class="btn btn-sm btn-secondary dl-btn" href="{{ url_for('download_data', datatype='basic_stats', repo=repo, ext='csv', owner=owner) }}">CSV</a>
+                <a class="btn btn-sm btn-secondary dl-btn" href="{{ url_for('download_data', datatype='basic_stats', repo=repo, ext='json', owner=owner) }}">JSON</a>
+            </h3>
+            <ul class="list-group">
+                <li class="list-group-item">Stars: {{ stats['stars'] }}</li>
+                <li class="list-group-item">Forks: {{ stats['forks'] }}</li>
+                <li class="list-group-item">Open Issues: {{ stats['open_issues'] }}</li>
+                <li class="list-group-item">Watchers: {{ stats['watchers'] }}</li>
+                <li class="list-group-item">Last Updated: {{ stats['last_updated'] }}</li>
+                <li class="list-group-item">Total PRs: {{ pr_count }}</li>
+                <li class="list-group-item">Total Contributors: {{ contributors|length }}</li>
+            </ul>
+        </div>
+        <div class="contributors">
+            <h3>
+                Top Contributors
+                <a class="btn btn-sm btn-secondary dl-btn" href="{{ url_for('download_data', datatype='contributors', repo=repo, ext='csv', owner=owner) }}">CSV</a>
+                <a class="btn btn-sm btn-secondary dl-btn" href="{{ url_for('download_data', datatype='contributors', repo=repo, ext='json', owner=owner) }}">JSON</a>
+            </h3>
+            <ol class="list-group list-group-numbered">
+            {% for c in contributors[:10] %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ c['login'] }}
+                    <span class="badge bg-primary rounded-pill">{{ c['contributions'] }} commits</span>
+                </li>
+            {% endfor %}
+            </ol>
+        </div>
+        <div class="my-4">
+            <h3>
+                Weekly Commit Activity
+                <a class="btn btn-sm btn-secondary dl-btn" href="{{ url_for('download_data', datatype='commit_activity', repo=repo, ext='csv', owner=owner) }}">CSV</a>
+                <a class="btn btn-sm btn-secondary dl-btn" href="{{ url_for('download_data', datatype='commit_activity', repo=repo, ext='json', owner=owner) }}">JSON</a>
+            </h3>
+            <ul class="list-group">
+            {% for week in commit_activity[-10:] %}
+                <li class="list-group-item">Week {{ loop.index }}: {{ week['total'] }} commits</li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% if chart_paths.commit %}
+            <div class="my-4">
+                <h3>Commit Activity Chart</h3>
+                <img src="{{ chart_paths.commit }}" alt="Commit Activity Chart" class="chart-img mb-2">
+                <a href="{{ chart_paths.commit }}" class="btn btn-outline-primary" download>Download Chart</a>
+            </div>
+        {% endif %}
+        {% if chart_paths.contributors %}
+            <div class="my-4">
+                <h3>Top Contributors Chart</h3>
+                <img src="{{ chart_paths.contributors }}" alt="Contributors Chart" class="chart-img mb-2">
+                <a href="{{ chart_paths.contributors }}" class="btn btn-outline-primary" download>Download Chart</a>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
